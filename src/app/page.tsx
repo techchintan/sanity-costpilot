@@ -219,7 +219,7 @@ export default function Home() {
             />
             <MetricCard
               title="Total Cost"
-              value={`$${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              value={`$${(totalCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               icon={DollarSign}
               iconColor="bg-accent"
               loading={loading}

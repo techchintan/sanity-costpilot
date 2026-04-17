@@ -2,10 +2,6 @@
 
 import {
   LayoutDashboard,
-  FileText,
-  BarChart3,
-  Settings,
-  HelpCircle,
   ChevronLeft,
   ChevronRight,
   DollarSign,
@@ -19,15 +15,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "invoices", label: "Invoices", icon: FileText },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "costs", label: "Cost Analysis", icon: DollarSign },
-];
-
-const bottomItems = [
-  { id: "settings", label: "Settings", icon: Settings },
-  { id: "help", label: "Help & Support", icon: HelpCircle },
+  { id: "overview", label: "Dashboard", icon: LayoutDashboard },
 ];
 
 export function Sidebar({ collapsed, onToggle, activeSection, onSectionChange }: SidebarProps) {
@@ -82,24 +70,7 @@ export function Sidebar({ collapsed, onToggle, activeSection, onSectionChange }:
         ))}
       </nav>
 
-      {/* Bottom Section */}
-      <div className="border-t border-border p-2">
-        {bottomItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onSectionChange(item.id)}
-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-              activeSection === item.id
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-            } ${collapsed ? "justify-center" : ""}`}
-            title={collapsed ? item.label : undefined}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </button>
-        ))}
-      </div>
+
     </aside>
   );
 }
