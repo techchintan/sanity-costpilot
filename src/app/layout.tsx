@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sanity Costpilot Invoices",
-  description: "Sanity Costpilot Invoices",
+  title: "CostPilot - Sanity Invoice Analytics",
+  description: "Monitor and analyze your Sanity project costs with intuitive dashboards and data visualization",
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-background`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

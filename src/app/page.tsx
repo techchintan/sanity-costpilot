@@ -9,29 +9,34 @@ import {
   extractInvoiceRows,
   extractInvoices,
 } from "@/lib/invoice-analysis";
+import {
+  Sidebar,
+  Header,
+  MetricCard,
+  CostChart,
+  DataTable,
+  LogsPanel,
+  ControlPanel,
+} from "@/components/dashboard";
+import {
+  FileText,
+  DollarSign,
+  FolderKanban,
+  TrendingUp,
+} from "lucide-react";
 
 export default function Home() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeSection, setActiveSection] = useState("overview");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [logs, setLogs] = useState<string[]>([]);
-
-  const [search, setSearch] = useState("");
 
   const [invoiceCount, setInvoiceCount] = useState(0);
   const [detailRows, setDetailRows] = useState<DetailRow[]>([]);
   const [summaryRows, setSummaryRows] = useState<SummaryRow[]>([]);
   const [pivotRows, setPivotRows] = useState<Record<string, string>[]>([]);
-
-  const filteredPivot = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let rows = pivotRows;
-    if (q) {
-      rows = rows.filter((r) =>
-        [r.projectId, r.projectName].some((v) => String(v || "").toLowerCase().includes(q))
-      );
-    }
-    return [...rows].sort((a, b) => String(a.projectId).localeCompare(String(b.projectId)));
-  }, [pivotRows, search]);
 
   const pivotMonths = useMemo(() => {
     const keys = new Set<string>();
@@ -44,8 +49,59 @@ export default function Home() {
     return Array.from(keys).sort();
   }, [pivotRows]);
 
+  const chartData = useMemo(() => {
+    const monthTotals: Record<string, number> = {};
+    for (const row of summaryRows) {
+      const month = row.month;
+      monthTotals[month] = (monthTotals[month] || 0) + row.total;
+    }
+    return Object.entries(monthTotals)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, value]) => ({ name, value }));
+  }, [summaryRows]);
+
+  const topProjectsData = useMemo(() => {
+    const projectTotals: Record<string, number> = {};
+    for (const row of summaryRows) {
+      const name = row.projectName || row.projectId;
+      projectTotals[name] = (projectTotals[name] || 0) + row.total;
+    }
+    return Object.entries(projectTotals)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([name, value]) => ({ name: name.slice(0, 15), value }));
+  }, [summaryRows]);
+
+  const totalCost = useMemo(() => {
+    return summaryRows.reduce((acc, row) => acc + row.total, 0);
+  }, [summaryRows]);
+
+  const projectCount = useMemo(() => {
+    return new Set(summaryRows.map((r) => r.projectId)).size;
+  }, [summaryRows]);
+
+  const tableColumns = useMemo(() => {
+    const base = [
+      { key: "projectId", label: "Project ID", align: "left" as const },
+      { key: "projectName", label: "Project Name", align: "left" as const },
+    ];
+    const monthCols = pivotMonths.map((m) => ({
+      key: m,
+      label: m,
+      align: "right" as const,
+    }));
+    return [...base, ...monthCols, { key: "total", label: "Total", align: "right" as const }];
+  }, [pivotMonths]);
+
   function log(line: string) {
-    setLogs((prev) => [...prev.slice(-250), `[${new Date().toISOString().slice(11, 19)}] ${line}`]);
+    setLogs((prev) => [
+      ...prev.slice(-250),
+      `[${new Date().toISOString().slice(11, 19)}] ${line}`,
+    ]);
+  }
+
+  function clearLogs() {
+    setLogs([]);
   }
 
   async function fetchAndCalculate() {
@@ -54,10 +110,9 @@ export default function Home() {
     setLogs([]);
     try {
       log("Fetching invoices (proxy)...");
-      const invRes = await fetch(
-        "/api/invoices",
-        { headers: { accept: "application/json" } }
-      );
+      const invRes = await fetch("/api/invoices", {
+        headers: { accept: "application/json" },
+      });
       if (!invRes.ok) throw new Error(await invRes.text());
       const payload = await invRes.json();
       const invoices = extractInvoices(payload);
@@ -65,12 +120,16 @@ export default function Home() {
       log(`Fetched ${invoices.length} invoices`);
 
       log("Calculating detail rows...");
-      const details = invoices.flatMap((inv) => extractInvoiceRows(inv, "dollars"));
+      const details = invoices.flatMap((inv) =>
+        extractInvoiceRows(inv, "dollars")
+      );
       setDetailRows(details);
       log(`Detail rows: ${details.length}`);
 
       log("Loading Sanity project map...");
-      const sanityRes = await fetch("/api/sanity-projects", { headers: { accept: "application/json" } });
+      const sanityRes = await fetch("/api/sanity-projects", {
+        headers: { accept: "application/json" },
+      });
       if (!sanityRes.ok) throw new Error(await sanityRes.text());
       const sanityMap = (await sanityRes.json()) as Record<string, string>;
       const mappedCount = Object.keys(sanityMap).length;
@@ -110,7 +169,8 @@ export default function Home() {
     for (const row of rows) {
       const values = headers.map((h) => {
         const text = String(row[h] ?? "");
-        if (text.includes(",") || text.includes('"') || text.includes("\n")) return `"${text.replace(/"/g, '""')}"`;
+        if (text.includes(",") || text.includes('"') || text.includes("\n"))
+          return `"${text.replace(/"/g, '""')}"`;
         return text;
       });
       lines.push(values.join(","));
@@ -123,121 +183,106 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-dvh bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
-      <main className="mx-auto w-full max-w-6xl px-4 py-10">
-        <div className="grid gap-8">
-          <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <h1 className="text-lg font-semibold">Invoice analysis</h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Fetches invoices via server-side proxy and renders project/month totals.
+    <div className="min-h-screen bg-background">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
+      <Header sidebarCollapsed={sidebarCollapsed} />
+
+      <main
+        className={`pt-16 transition-all duration-300 ${
+          sidebarCollapsed ? "ml-16" : "ml-64"
+        }`}
+      >
+        <div className="p-6">
+          {/* Page Title */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-foreground">
+              Cost Analytics Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Monitor and analyze your Sanity project costs across all invoices
             </p>
+          </div>
 
-            <div className="mt-4 grid gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-1 text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">View</span>
-                  <input
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
-                    value="Pivot"
-                    readOnly
-                  />
-                </label>
+          {/* Metric Cards */}
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard
+              title="Total Invoices"
+              value={invoiceCount}
+              icon={FileText}
+              iconColor="bg-primary"
+              loading={loading}
+            />
+            <MetricCard
+              title="Total Cost"
+              value={`$${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              icon={DollarSign}
+              iconColor="bg-accent"
+              loading={loading}
+            />
+            <MetricCard
+              title="Projects"
+              value={projectCount}
+              icon={FolderKanban}
+              iconColor="bg-secondary"
+              loading={loading}
+            />
+            <MetricCard
+              title="Detail Rows"
+              value={detailRows.length}
+              icon={TrendingUp}
+              iconColor="bg-muted"
+              loading={loading}
+            />
+          </div>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Download</span>
-                  <button
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                    disabled={!pivotRows.length}
-                    onClick={downloadPivot}
-                    type="button"
-                  >
-                    Download pivot CSV
-                  </button>
-                </label>
-              </div>
-
-              <button
-                className="mt-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-                disabled={loading}
-                onClick={fetchAndCalculate}
-              >
-                {loading ? "Working..." : "Fetch & Calculate"}
-              </button>
-
-              {error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-                  {error}
-                </div>
-              ) : null}
-
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
-                <div>Invoices: {invoiceCount}</div>
-                <div>Detail rows: {detailRows.length}</div>
-                <div>Summary rows: {summaryRows.length}</div>
-                <div>Projects: {new Set(summaryRows.map((r) => r.projectId)).size}</div>
-              </div>
-
-              <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-                <div className="mb-2 font-medium text-zinc-900 dark:text-zinc-50">Logs</div>
-                <pre className="max-h-44 overflow-auto whitespace-pre-wrap">{logs.join("\n")}</pre>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="grid gap-3 md:grid-cols-1">
-              <input
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
-                placeholder="Search projectId / name"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+          {/* Charts and Control Panel */}
+          <div className="mb-6 grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CostChart
+                data={chartData}
+                type="area"
+                title="Monthly Cost Trend"
+                description="Total costs aggregated by month across all projects"
+                loading={loading && chartData.length === 0}
               />
             </div>
-
-            <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-              <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
-                <table className="min-w-max w-full text-left text-sm">
-                  <thead className="sticky top-0 bg-zinc-50 text-xs text-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-300">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">projectId</th>
-                      <th className="px-3 py-2 font-medium">projectName</th>
-                      {pivotMonths.map((m) => (
-                        <th key={m} className="px-3 py-2 font-medium text-right">
-                          {m}
-                        </th>
-                      ))}
-                      <th className="px-3 py-2 font-medium text-right">total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPivot.map((r) => (
-                      <tr key={r.projectId} className="border-t border-zinc-200 dark:border-zinc-800">
-                        <td className="px-3 py-2 font-mono text-xs">{r.projectId}</td>
-                        <td className="px-3 py-2">{r.projectName}</td>
-                        {pivotMonths.map((m) => (
-                          <td key={m} className="px-3 py-2 text-right font-mono text-xs">
-                            {r[m] ?? "0.00"}
-                          </td>
-                        ))}
-                        <td className="px-3 py-2 text-right font-mono text-xs">{r.total ?? "0.00"}</td>
-                      </tr>
-                    ))}
-
-                    {!filteredPivot.length ? (
-                      <tr>
-                        <td
-                          className="px-3 py-6 text-center text-sm text-zinc-600 dark:text-zinc-400"
-                          colSpan={pivotMonths.length + 3}
-                        >
-                          No rows yet. Click “Fetch & Calculate”.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-6">
+              <ControlPanel
+                loading={loading}
+                error={error}
+                onFetch={fetchAndCalculate}
+              />
+              <LogsPanel logs={logs} onClear={clearLogs} />
             </div>
-          </section>
+          </div>
+
+          {/* Top Projects Chart */}
+          {topProjectsData.length > 0 && (
+            <div className="mb-6">
+              <CostChart
+                data={topProjectsData}
+                type="bar"
+                title="Top Projects by Cost"
+                description="Highest cost projects across all billing periods"
+              />
+            </div>
+          )}
+
+          {/* Data Table */}
+          <DataTable
+            data={pivotRows}
+            columns={tableColumns}
+            title="Project Cost Breakdown"
+            description="Detailed cost analysis by project and month"
+            searchPlaceholder="Search projects..."
+            onDownload={pivotRows.length > 0 ? downloadPivot : undefined}
+            loading={loading && pivotRows.length === 0}
+          />
         </div>
       </main>
     </div>
