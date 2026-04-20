@@ -12,7 +12,7 @@ import {
 import {
   Sidebar,
   Header,
-  DataTable,
+  ProjectCostView,
   LogsPanel,
   ControlPanel,
 } from "@/components/dashboard";
@@ -196,13 +196,10 @@ export default function Home() {
             <LogsPanel logs={logs} onClear={clearLogs} />
           </div>
 
-          {/* Data Table */}
-          <DataTable
+          {/* Project Cost View - Chart/Table Toggle */}
+          <ProjectCostView
             data={pivotRows}
             columns={tableColumns}
-            title="Project Cost Breakdown"
-            description="Detailed cost analysis by project and month"
-            searchPlaceholder="Search projects..."
             onDownload={pivotRows.length > 0 ? downloadPivot : undefined}
             loading={loading && pivotRows.length === 0}
           />
