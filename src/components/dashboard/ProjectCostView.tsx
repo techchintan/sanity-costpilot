@@ -2,16 +2,15 @@
 
 import { useState, useMemo } from "react";
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Legend,
 } from "recharts";
 import {
@@ -30,16 +29,12 @@ interface ProjectCostViewProps {
   loading?: boolean;
 }
 
-const CHART_COLORS = [
-  "#0ea5e9",
-  "#22c55e",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
-  "#14b8a6",
-  "#f97316",
-];
+const CHART_COLORS = {
+  primary: "#0ea5e9",
+  secondary: "#22c55e",
+  accent: "#f59e0b",
+  line: "#8b5cf6",
+};
 
 export function ProjectCostView({
   data,
@@ -52,48 +47,45 @@ export function ProjectCostView({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Prepare chart data from pivot rows
+  // Prepare chart data from pivot rows - top 12 projects with cumulative total
   const chartData = useMemo(() => {
-    return data
+    const processed = data
       .map((row) => {
         const total = parseFloat(String(row.total || "0").replace(/[^0-9.-]/g, ""));
         return {
-          name: row.projectName || row.projectId || "Unknown",
-          value: isNaN(total) ? 0 : total,
+          name: (row.projectName || row.projectId || "Unknown").slice(0, 12),
+          fullName: row.projectName || row.projectId || "Unknown",
+          cost: isNaN(total) ? 0 : total,
           projectId: row.projectId,
         };
       })
-      .filter((item) => item.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .filter((item) => item.cost > 0)
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 12);
+
+    // Add cumulative cost and average line
+    let cumulative = 0;
+    const totalCost = processed.reduce((sum, item) => sum + item.cost, 0);
+    const average = processed.length > 0 ? totalCost / processed.length : 0;
+
+    return processed.map((item) => {
+      cumulative += item.cost;
+      return {
+        ...item,
+        cumulative,
+        average: Math.round(average * 100) / 100,
+        percentage: totalCost > 0 ? Math.round((item.cost / totalCost) * 100) : 0,
+      };
+    });
   }, [data]);
 
-  // Calculate total for percentage
-  const totalValue = useMemo(() => {
-    return chartData.reduce((sum, item) => sum + item.value, 0);
+  // Calculate summary stats
+  const summaryStats = useMemo(() => {
+    const totalCost = chartData.reduce((sum, item) => sum + item.cost, 0);
+    const maxCost = chartData.length > 0 ? Math.max(...chartData.map((d) => d.cost)) : 0;
+    const avgCost = chartData.length > 0 ? totalCost / chartData.length : 0;
+    return { totalCost, maxCost, avgCost, count: chartData.length };
   }, [chartData]);
-
-  // Pie chart data with percentages
-  const pieData = useMemo(() => {
-    const top7 = chartData.slice(0, 7);
-    const othersValue = chartData.slice(7).reduce((sum, item) => sum + item.value, 0);
-    
-    const result = top7.map((item) => ({
-      ...item,
-      percentage: totalValue > 0 ? ((item.value / totalValue) * 100).toFixed(1) : "0",
-    }));
-
-    if (othersValue > 0) {
-      result.push({
-        name: "Others",
-        value: othersValue,
-        projectId: "others",
-        percentage: totalValue > 0 ? ((othersValue / totalValue) * 100).toFixed(1) : "0",
-      });
-    }
-
-    return result;
-  }, [chartData, totalValue]);
 
   // Table filtering and sorting
   const filteredData = useMemo(() => {
@@ -135,6 +127,12 @@ export function ProjectCostView({
     }).format(value);
   };
 
+  const formatCompact = (value: number) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(1)}K`;
+    return `$${value.toFixed(0)}`;
+  };
+
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -145,7 +143,7 @@ export function ProjectCostView({
           </div>
           <div className="h-10 w-32 animate-pulse rounded-lg bg-muted" />
         </div>
-        <div className="h-80 w-full animate-pulse rounded-lg bg-muted" />
+        <div className="h-96 w-full animate-pulse rounded-lg bg-muted" />
       </div>
     );
   }
@@ -157,7 +155,7 @@ export function ProjectCostView({
         <div>
           <h3 className="text-lg font-semibold text-foreground">Project Cost Breakdown</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Detailed cost analysis by project
+            Detailed cost analysis with cumulative trend
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -206,95 +204,168 @@ export function ProjectCostView({
           /* Chart View */
           <div>
             {chartData.length > 0 ? (
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* Bar Chart */}
-                <div>
-                  <h4 className="mb-4 text-sm font-medium text-muted-foreground">
-                    Top Projects by Cost
-                  </h4>
-                  <div style={{ width: "100%", height: 320, minHeight: 320 }}>
-                    <ResponsiveContainer width="100%" height={320}>
-                      <BarChart
+              <div>
+                {/* Summary Stats */}
+                <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Total Cost
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-foreground">
+                      {formatCurrency(summaryStats.totalCost)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Highest Project
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-foreground">
+                      {formatCurrency(summaryStats.maxCost)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Average Cost
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-foreground">
+                      {formatCurrency(summaryStats.avgCost)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Projects Shown
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-foreground">
+                      {summaryStats.count} <span className="text-sm font-normal text-muted-foreground">of {data.length}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* ComposedChart */}
+                <div className="rounded-lg border border-border bg-muted/20 p-4">
+                  <div style={{ width: "100%", height: 400, minHeight: 400 }}>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <ComposedChart
                         data={chartData}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis
-                          type="number"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          tickFormatter={(value) => `$${value.toLocaleString()}`}
+                        <CartesianGrid 
+                          strokeDasharray="3 3" 
+                          stroke="hsl(var(--border))" 
+                          vertical={false}
                         />
-                        <YAxis
-                          type="category"
+                        <XAxis
                           dataKey="name"
                           tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                          width={120}
-                          tickFormatter={(value) => value.length > 15 ? `${value.slice(0, 15)}...` : value}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                          interval={0}
+                        />
+                        <YAxis
+                          yAxisId="left"
+                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                          tickFormatter={formatCompact}
+                          width={70}
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                          tickFormatter={formatCompact}
+                          width={70}
                         />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "hsl(var(--card))",
                             border: "1px solid hsl(var(--border))",
                             borderRadius: "8px",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                            padding: "12px",
                           }}
-                          labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
-                          formatter={(value: number) => [formatCurrency(value), "Cost"]}
+                          labelStyle={{ 
+                            color: "hsl(var(--foreground))", 
+                            fontWeight: 600,
+                            marginBottom: "8px",
+                          }}
+                          formatter={(value: number, name: string) => {
+                            const label = name === "cost" ? "Project Cost" : 
+                                          name === "cumulative" ? "Cumulative Total" : 
+                                          name === "average" ? "Average Line" : name;
+                            return [formatCurrency(value), label];
+                          }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload[0]) {
+                              const item = payload[0].payload;
+                              return `${item.fullName} (${item.percentage}%)`;
+                            }
+                            return label;
+                          }}
                         />
+                        <Legend 
+                          verticalAlign="top" 
+                          height={36}
+                          iconType="circle"
+                          formatter={(value) => {
+                            const labels: Record<string, string> = {
+                              cost: "Project Cost",
+                              cumulative: "Cumulative Total",
+                              average: "Average Line",
+                            };
+                            return <span style={{ color: "hsl(var(--foreground))", fontSize: 12 }}>{labels[value] || value}</span>;
+                          }}
+                        />
+                        {/* Area for cumulative */}
+                        <Area
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="cumulative"
+                          fill={CHART_COLORS.secondary}
+                          fillOpacity={0.15}
+                          stroke={CHART_COLORS.secondary}
+                          strokeWidth={2}
+                        />
+                        {/* Bars for individual costs */}
                         <Bar
-                          dataKey="value"
-                          fill="hsl(var(--primary))"
-                          radius={[0, 4, 4, 0]}
+                          yAxisId="left"
+                          dataKey="cost"
+                          fill={CHART_COLORS.primary}
+                          radius={[4, 4, 0, 0]}
+                          barSize={32}
                         />
-                      </BarChart>
+                        {/* Line for average */}
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="average"
+                          stroke={CHART_COLORS.line}
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={false}
+                        />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
-                {/* Pie Chart */}
-                <div>
-                  <h4 className="mb-4 text-sm font-medium text-muted-foreground">
-                    Cost Distribution
-                  </h4>
-                  <div style={{ width: "100%", height: 320, minHeight: 320 }}>
-                    <ResponsiveContainer width="100%" height={320}>
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={2}
-                          dataKey="value"
-                          label={({ name, percentage }) =>
-                            `${name.length > 10 ? `${name.slice(0, 10)}...` : name} (${percentage}%)`
-                          }
-                          labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
-                        >
-                          {pieData.map((_, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={CHART_COLORS[index % CHART_COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                          formatter={(value: number) => [formatCurrency(value), "Cost"]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                {/* Legend Description */}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded" style={{ backgroundColor: CHART_COLORS.primary }} />
+                    <span>Individual project cost (left axis)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded" style={{ backgroundColor: CHART_COLORS.secondary }} />
+                    <span>Cumulative total (right axis)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-0.5 w-6" style={{ backgroundColor: CHART_COLORS.line, borderStyle: "dashed" }} />
+                    <span>Average cost line</span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex h-80 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
+              <div className="flex h-96 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
                 <div className="text-center">
                   <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/50" />
                   <p className="mt-4 text-sm font-medium text-muted-foreground">
