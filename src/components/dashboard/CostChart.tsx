@@ -46,6 +46,27 @@ export function CostChart({
     );
   }
 
+  const hasData = data && data.length > 0;
+
+  if (!hasData) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-foreground">{title}</h3>
+          {description && (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
+        <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
+          <div className="text-center">
+            <p className="text-sm font-medium text-muted-foreground">No data available</p>
+            <p className="mt-1 text-xs text-muted-foreground">Click &quot;Fetch &amp; Calculate&quot; to load data</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-4">

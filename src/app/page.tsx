@@ -267,16 +267,15 @@ export default function Home() {
           </div>
 
           {/* Top Projects Chart */}
-          {topProjectsData.length > 0 && (
-            <div className="mb-6">
-              <CostChart
-                data={topProjectsData}
-                type="bar"
-                title="Top Projects by Cost"
-                description="Highest cost projects across all billing periods"
-              />
-            </div>
-          )}
+          <div className="mb-6">
+            <CostChart
+              data={topProjectsData}
+              type="bar"
+              title="Top Projects by Cost"
+              description="Highest cost projects across all billing periods"
+              loading={loading && topProjectsData.length === 0}
+            />
+          </div>
 
           {/* Data Table */}
           <DataTable
