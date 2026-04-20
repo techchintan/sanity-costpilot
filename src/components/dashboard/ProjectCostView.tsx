@@ -28,6 +28,12 @@ interface ProjectCostViewProps {
   loading?: boolean;
 }
 
+// Generate colors for months
+const MONTH_COLORS = [
+  "#0ea5e9", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899",
+  "#06b6d4", "#84cc16", "#f97316", "#6366f1", "#14b8a6", "#a855f7",
+];
+
 const CHART_COLORS = {
   primary: "#0ea5e9",
   secondary: "#22c55e",
@@ -42,6 +48,7 @@ export function ProjectCostView({
   loading = false,
 }: ProjectCostViewProps) {
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const [chartType, setChartType] = useState<"total" | "monthly">("monthly");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -85,6 +92,44 @@ export function ProjectCostView({
     const avgCost = chartData.length > 0 ? totalCost / chartData.length : 0;
     return { totalCost, maxCost, avgCost, count: chartData.length };
   }, [chartData]);
+
+  // Extract month columns from data
+  const monthColumns = useMemo(() => {
+    const months: string[] = [];
+    if (data.length > 0) {
+      const sampleRow = data[0];
+      for (const key of Object.keys(sampleRow)) {
+        if (key !== "projectId" && key !== "projectName" && key !== "total") {
+          months.push(key);
+        }
+      }
+    }
+    return months.sort();
+  }, [data]);
+
+  // Prepare monthly breakdown chart data - shows each project with stacked months
+  const monthlyChartData = useMemo(() => {
+    return data
+      .map((row) => {
+        const projectName = row.projectName || row.projectId || "Unknown";
+        const monthData: Record<string, number | string> = {
+          name: projectName,
+          fullName: projectName,
+        };
+        
+        let projectTotal = 0;
+        for (const month of monthColumns) {
+          const value = parseFloat(String(row[month] || "0").replace(/[^0-9.-]/g, ""));
+          monthData[month] = isNaN(value) ? 0 : value;
+          projectTotal += isNaN(value) ? 0 : value;
+        }
+        monthData.total = projectTotal;
+        
+        return monthData;
+      })
+      .filter((item) => (item.total as number) > 0)
+      .sort((a, b) => (b.total as number) - (a.total as number));
+  }, [data, monthColumns]);
 
   // Table filtering and sorting
   const filteredData = useMemo(() => {
@@ -204,6 +249,33 @@ export function ProjectCostView({
           <div>
             {chartData.length > 0 ? (
               <div>
+                {/* Chart Type Toggle */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">View:</span>
+                  <div className="flex rounded-md border border-border bg-muted/30 p-0.5">
+                    <button
+                      onClick={() => setChartType("monthly")}
+                      className={`rounded px-3 py-1 text-xs font-medium transition-all ${
+                        chartType === "monthly"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Monthly Breakdown
+                    </button>
+                    <button
+                      onClick={() => setChartType("total")}
+                      className={`rounded px-3 py-1 text-xs font-medium transition-all ${
+                        chartType === "total"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Total Cost
+                    </button>
+                  </div>
+                </div>
+
                 {/* Summary Stats */}
                 <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -240,132 +312,221 @@ export function ProjectCostView({
                   </div>
                 </div>
 
-                {/* ComposedChart */}
+                {/* Charts */}
                 <div className="rounded-lg border border-border bg-muted/20 p-4">
                   <div style={{ width: "100%", height: 400, minHeight: 400 }}>
                     <ResponsiveContainer width="100%" height={400}>
-                      <ComposedChart
-                        data={chartData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                      >
-                        <CartesianGrid 
-                          strokeDasharray="3 3" 
-                          stroke="hsl(var(--border))" 
-                          vertical={false}
-                        />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={60}
-                          interval={0}
-                        />
-                        <YAxis
-                          yAxisId="left"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          tickFormatter={formatCompact}
-                          width={70}
-                        />
-                        <YAxis
-                          yAxisId="right"
-                          orientation="right"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          tickFormatter={formatCompact}
-                          width={70}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload || !payload.length) return null;
-                            const item = payload[0]?.payload;
-                            if (!item) return null;
-                            return (
-                              <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
-                                <p className="mb-1.5 text-xs font-semibold text-foreground">
-                                  {item.fullName}
-                                </p>
-                                <div className="space-y-0.5 text-[11px]">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <span className="text-muted-foreground">Cost:</span>
-                                    <span className="font-medium" style={{ color: CHART_COLORS.primary }}>
-                                      {formatCurrency(item.cost)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-4">
-                                    <span className="text-muted-foreground">Cumulative:</span>
-                                    <span className="font-medium" style={{ color: CHART_COLORS.secondary }}>
-                                      {formatCurrency(item.cumulative)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-4">
-                                    <span className="text-muted-foreground">Share:</span>
-                                    <span className="font-medium text-foreground">{item.percentage}%</span>
+                      {chartType === "monthly" ? (
+                        /* Monthly Stacked Bar Chart */
+                        <ComposedChart
+                          data={monthlyChartData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                        >
+                          <CartesianGrid 
+                            strokeDasharray="3 3" 
+                            stroke="hsl(var(--border))" 
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            interval={0}
+                          />
+                          <YAxis
+                            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                            tickFormatter={formatCompact}
+                            width={70}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (!active || !payload || !payload.length) return null;
+                              const item = payload[0]?.payload;
+                              if (!item) return null;
+                              return (
+                                <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg max-w-xs">
+                                  <p className="mb-2 text-xs font-semibold text-foreground">
+                                    {item.fullName}
+                                  </p>
+                                  <div className="space-y-1 text-[11px] max-h-48 overflow-auto">
+                                    {monthColumns.map((month, idx) => {
+                                      const value = item[month] as number;
+                                      if (!value || value === 0) return null;
+                                      return (
+                                        <div key={month} className="flex items-center justify-between gap-4">
+                                          <div className="flex items-center gap-1.5">
+                                            <span 
+                                              className="inline-block h-2 w-2 rounded-sm" 
+                                              style={{ backgroundColor: MONTH_COLORS[idx % MONTH_COLORS.length] }}
+                                            />
+                                            <span className="text-muted-foreground">{month}:</span>
+                                          </div>
+                                          <span className="font-medium text-foreground">
+                                            {formatCurrency(value)}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                    <div className="flex items-center justify-between gap-4 border-t border-border pt-1 mt-1">
+                                      <span className="font-medium text-muted-foreground">Total:</span>
+                                      <span className="font-bold text-foreground">
+                                        {formatCurrency(item.total as number)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          }}
-                        />
-
-                        {/* Area for cumulative */}
-                        <Area
-                          yAxisId="right"
-                          type="monotone"
-                          dataKey="cumulative"
-                          fill={CHART_COLORS.secondary}
-                          fillOpacity={0.15}
-                          stroke={CHART_COLORS.secondary}
-                          strokeWidth={2}
-                        />
-                        {/* Bars for individual costs */}
-                        <Bar
-                          yAxisId="left"
-                          dataKey="cost"
-                          fill={CHART_COLORS.primary}
-                          radius={[4, 4, 0, 0]}
-                          barSize={32}
-                        />
-                        {/* Line for average */}
-                        <Line
-                          yAxisId="left"
-                          type="monotone"
-                          dataKey="average"
-                          stroke={CHART_COLORS.line}
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                          dot={false}
-                        />
-                      </ComposedChart>
+                              );
+                            }}
+                          />
+                          {monthColumns.map((month, idx) => (
+                            <Bar
+                              key={month}
+                              dataKey={month}
+                              stackId="months"
+                              fill={MONTH_COLORS[idx % MONTH_COLORS.length]}
+                              radius={idx === monthColumns.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                            />
+                          ))}
+                        </ComposedChart>
+                      ) : (
+                        /* Total Cost Chart */
+                        <ComposedChart
+                          data={chartData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                        >
+                          <CartesianGrid 
+                            strokeDasharray="3 3" 
+                            stroke="hsl(var(--border))" 
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            interval={0}
+                          />
+                          <YAxis
+                            yAxisId="left"
+                            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                            tickFormatter={formatCompact}
+                            width={70}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                            tickFormatter={formatCompact}
+                            width={70}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (!active || !payload || !payload.length) return null;
+                              const item = payload[0]?.payload;
+                              if (!item) return null;
+                              return (
+                                <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
+                                  <p className="mb-1.5 text-xs font-semibold text-foreground">
+                                    {item.fullName}
+                                  </p>
+                                  <div className="space-y-0.5 text-[11px]">
+                                    <div className="flex items-center justify-between gap-4">
+                                      <span className="text-muted-foreground">Cost:</span>
+                                      <span className="font-medium" style={{ color: CHART_COLORS.primary }}>
+                                        {formatCurrency(item.cost)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4">
+                                      <span className="text-muted-foreground">Cumulative:</span>
+                                      <span className="font-medium" style={{ color: CHART_COLORS.secondary }}>
+                                        {formatCurrency(item.cumulative)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4">
+                                      <span className="text-muted-foreground">Share:</span>
+                                      <span className="font-medium text-foreground">{item.percentage}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          />
+                          <Area
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="cumulative"
+                            fill={CHART_COLORS.secondary}
+                            fillOpacity={0.15}
+                            stroke={CHART_COLORS.secondary}
+                            strokeWidth={2}
+                          />
+                          <Bar
+                            yAxisId="left"
+                            dataKey="cost"
+                            fill={CHART_COLORS.primary}
+                            radius={[4, 4, 0, 0]}
+                            barSize={32}
+                          />
+                          <Line
+                            yAxisId="left"
+                            type="monotone"
+                            dataKey="average"
+                            stroke={CHART_COLORS.line}
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={false}
+                          />
+                        </ComposedChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
                 </div>
 
                 {/* Legend */}
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-6 border-t border-border pt-4">
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="inline-block h-3 w-3 rounded-sm" 
-                      style={{ backgroundColor: CHART_COLORS.primary }} 
-                    />
-                    <span className="text-sm text-muted-foreground">Project Cost</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="inline-block h-3 w-3 rounded-sm" 
-                      style={{ backgroundColor: CHART_COLORS.secondary, opacity: 0.5 }} 
-                    />
-                    <span className="text-sm text-muted-foreground">Cumulative Total</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="inline-block h-0.5 w-5 rounded-full" 
-                      style={{ 
-                        backgroundColor: CHART_COLORS.line,
-                        backgroundImage: `repeating-linear-gradient(90deg, ${CHART_COLORS.line} 0, ${CHART_COLORS.line} 3px, transparent 3px, transparent 6px)`
-                      }} 
-                    />
-                    <span className="text-sm text-muted-foreground">Average Cost</span>
-                  </div>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-4 border-t border-border pt-4">
+                  {chartType === "monthly" ? (
+                    /* Monthly Legend */
+                    monthColumns.map((month, idx) => (
+                      <div key={month} className="flex items-center gap-1.5">
+                        <span 
+                          className="inline-block h-3 w-3 rounded-sm" 
+                          style={{ backgroundColor: MONTH_COLORS[idx % MONTH_COLORS.length] }} 
+                        />
+                        <span className="text-xs text-muted-foreground">{month}</span>
+                      </div>
+                    ))
+                  ) : (
+                    /* Total Cost Legend */
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="inline-block h-3 w-3 rounded-sm" 
+                          style={{ backgroundColor: CHART_COLORS.primary }} 
+                        />
+                        <span className="text-sm text-muted-foreground">Project Cost</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="inline-block h-3 w-3 rounded-sm" 
+                          style={{ backgroundColor: CHART_COLORS.secondary, opacity: 0.5 }} 
+                        />
+                        <span className="text-sm text-muted-foreground">Cumulative Total</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="inline-block h-0.5 w-5 rounded-full" 
+                          style={{ 
+                            backgroundColor: CHART_COLORS.line,
+                            backgroundImage: `repeating-linear-gradient(90deg, ${CHART_COLORS.line} 0, ${CHART_COLORS.line} 3px, transparent 3px, transparent 6px)`
+                          }} 
+                        />
+                        <span className="text-sm text-muted-foreground">Average Cost</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
