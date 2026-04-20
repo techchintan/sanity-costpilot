@@ -12,17 +12,11 @@ import {
 import {
   Sidebar,
   Header,
-  MetricCard,
+  CostBreakdown,
   DataTable,
   LogsPanel,
   ControlPanel,
 } from "@/components/dashboard";
-import {
-  FileText,
-  DollarSign,
-  FolderKanban,
-  TrendingUp,
-} from "lucide-react";
 
 export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -189,34 +183,14 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Metric Cards */}
-          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              title="Total Invoices"
-              value={invoiceCount}
-              icon={FileText}
-              iconColor="bg-primary"
-              loading={loading}
-            />
-            <MetricCard
-              title="Total Cost"
-              value={`$${(totalCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              icon={DollarSign}
-              iconColor="bg-accent"
-              loading={loading}
-            />
-            <MetricCard
-              title="Projects"
-              value={projectCount}
-              icon={FolderKanban}
-              iconColor="bg-secondary"
-              loading={loading}
-            />
-            <MetricCard
-              title="Detail Rows"
-              value={detailRows.length}
-              icon={TrendingUp}
-              iconColor="bg-muted"
+          {/* Cost Breakdown Section */}
+          <div className="mb-6">
+            <CostBreakdown
+              invoiceCount={invoiceCount}
+              totalCost={totalCost}
+              projectCount={projectCount}
+              detailRowsCount={detailRows.length}
+              summaryRows={summaryRows}
               loading={loading}
             />
           </div>
