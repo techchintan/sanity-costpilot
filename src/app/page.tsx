@@ -44,7 +44,7 @@ export default function Home() {
   const totalCost = useMemo(() => {
     if (!summaryRows || summaryRows.length === 0) return 0;
     const sum = summaryRows.reduce((acc, row) => {
-      const value = typeof row.total === 'number' && !isNaN(row.total) ? row.total : 0;
+      const value = typeof row.totalAmount === 'number' && !isNaN(row.totalAmount) ? row.totalAmount : 0;
       return acc + value;
     }, 0);
     return isNaN(sum) ? 0 : sum;
