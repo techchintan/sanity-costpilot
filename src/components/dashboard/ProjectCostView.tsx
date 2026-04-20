@@ -47,21 +47,20 @@ export function ProjectCostView({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Prepare chart data from pivot rows - top 12 projects with cumulative total
+  // Prepare chart data from pivot rows - all projects with cumulative total
   const chartData = useMemo(() => {
     const processed = data
       .map((row) => {
         const total = parseFloat(String(row.total || "0").replace(/[^0-9.-]/g, ""));
         return {
-          name: (row.projectName || row.projectId || "Unknown").slice(0, 12),
+          name: (row.projectName || row.projectId || "Unknown").slice(0, 10),
           fullName: row.projectName || row.projectId || "Unknown",
           cost: isNaN(total) ? 0 : total,
           projectId: row.projectId,
         };
       })
       .filter((item) => item.cost > 0)
-      .sort((a, b) => b.cost - a.cost)
-      .slice(0, 12);
+      .sort((a, b) => b.cost - a.cost);
 
     // Add cumulative cost and average line
     let cumulative = 0;
@@ -233,10 +232,10 @@ export function ProjectCostView({
                   </div>
                   <div className="rounded-lg border border-border bg-muted/30 p-4">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Projects Shown
+                      Total Projects
                     </p>
                     <p className="mt-1 text-xl font-bold text-foreground">
-                      {summaryStats.count} <span className="text-sm font-normal text-muted-foreground">of {data.length}</span>
+                      {summaryStats.count}
                     </p>
                   </div>
                 </div>
@@ -349,18 +348,28 @@ export function ProjectCostView({
                 </div>
 
                 {/* Legend Description */}
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded" style={{ backgroundColor: CHART_COLORS.primary }} />
-                    <span>Individual project cost (left axis)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded" style={{ backgroundColor: CHART_COLORS.secondary }} />
-                    <span>Cumulative total (right axis)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-0.5 w-6" style={{ backgroundColor: CHART_COLORS.line, borderStyle: "dashed" }} />
-                    <span>Average cost line</span>
+                <div className="mt-5 rounded-lg border border-border bg-muted/40 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chart Legend</p>
+                  <div className="flex flex-wrap items-center justify-start gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded" style={{ backgroundColor: CHART_COLORS.primary }} />
+                      <span className="font-medium text-foreground">Project Cost</span>
+                      <span className="text-muted-foreground">(left axis)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded" style={{ backgroundColor: CHART_COLORS.secondary, opacity: 0.6 }} />
+                      <span className="font-medium text-foreground">Cumulative Total</span>
+                      <span className="text-muted-foreground">(right axis)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center">
+                        <div className="h-0.5 w-3 rounded" style={{ backgroundColor: CHART_COLORS.line }} />
+                        <div className="mx-0.5 h-0.5 w-1 rounded" style={{ backgroundColor: CHART_COLORS.line }} />
+                        <div className="h-0.5 w-3 rounded" style={{ backgroundColor: CHART_COLORS.line }} />
+                      </div>
+                      <span className="font-medium text-foreground">Average Cost</span>
+                      <span className="text-muted-foreground">(dashed line)</span>
+                    </div>
                   </div>
                 </div>
               </div>
