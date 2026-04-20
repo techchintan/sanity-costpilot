@@ -6,3 +6,4 @@ export { DataTable } from "./DataTable";
 export { LogsPanel } from "./LogsPanel";
 export { ControlPanel } from "./ControlPanel";
 export { CostBreakdown } from "./CostBreakdown";
+export { ProjectCostChart } from "./ProjectCostChart";

@@ -15,6 +15,7 @@ import {
   DataTable,
   LogsPanel,
   ControlPanel,
+  ProjectCostChart,
 } from "@/components/dashboard";
 
 export default function Home() {
@@ -180,6 +181,17 @@ export default function Home() {
             <p className="mt-1 text-sm text-muted-foreground">
               Monitor and analyze your Sanity project costs across all invoices
             </p>
+          </div>
+
+          {/* Project Cost Breakdown Chart */}
+          <div className="mb-6">
+            <ProjectCostChart
+              summaryRows={summaryRows}
+              invoiceCount={invoiceCount}
+              projectCount={projectCount}
+              totalCost={totalCost}
+              loading={loading && summaryRows.length === 0}
+            />
           </div>
 
           {/* Control Panel and Logs */}
