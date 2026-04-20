@@ -212,8 +212,8 @@ export function ProjectCostView({
                   <h4 className="mb-4 text-sm font-medium text-muted-foreground">
                     Top Projects by Cost
                   </h4>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div style={{ width: "100%", height: 320, minHeight: 320 }}>
+                    <ResponsiveContainer width="100%" height={320}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
@@ -257,8 +257,8 @@ export function ProjectCostView({
                   <h4 className="mb-4 text-sm font-medium text-muted-foreground">
                     Cost Distribution
                   </h4>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div style={{ width: "100%", height: 320, minHeight: 320 }}>
+                    <ResponsiveContainer width="100%" height={320}>
                       <PieChart>
                         <Pie
                           data={pieData}
