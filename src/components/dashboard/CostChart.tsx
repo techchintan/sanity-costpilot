@@ -109,7 +109,7 @@ export function CostChart({
                   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                 }}
                 labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, "Cost"]}
+                formatter={(value) => [`${Number(value || 0).toLocaleString()}`, "Cost"]}
               />
               <Area
                 type="monotone"
@@ -145,7 +145,7 @@ export function CostChart({
                   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                 }}
                 labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, "Cost"]}
+                formatter={(value) => [`${Number(value || 0).toLocaleString()}`, "Cost"]}
               />
               <Legend />
               <Bar dataKey="value" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="Cost" />
