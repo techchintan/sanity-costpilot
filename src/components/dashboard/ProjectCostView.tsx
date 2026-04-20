@@ -51,9 +51,10 @@ export function ProjectCostView({
     const processed = data
       .map((row) => {
         const total = parseFloat(String(row.total || "0").replace(/[^0-9.-]/g, ""));
+        const projectName = row.projectName || row.projectId || "Unknown";
         return {
-          name: (row.projectName || row.projectId || "Unknown").slice(0, 10),
-          fullName: row.projectName || row.projectId || "Unknown",
+          name: projectName,
+          fullName: projectName,
           cost: isNaN(total) ? 0 : total,
           projectId: row.projectId,
         };
@@ -274,30 +275,35 @@ export function ProjectCostView({
                           width={70}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                            padding: "12px",
-                          }}
-                          labelStyle={{ 
-                            color: "hsl(var(--foreground))", 
-                            fontWeight: 600,
-                            marginBottom: "8px",
-                          }}
-                          formatter={(value: number, name: string) => {
-                            const label = name === "cost" ? "Project Cost" : 
-                                          name === "cumulative" ? "Cumulative Total" : 
-                                          name === "average" ? "Average Line" : name;
-                            return [formatCurrency(value), label];
-                          }}
-                          labelFormatter={(label, payload) => {
-                            if (payload && payload[0]) {
-                              const item = payload[0].payload;
-                              return `${item.fullName} (${item.percentage}%)`;
-                            }
-                            return label;
+                          content={({ active, payload }) => {
+                            if (!active || !payload || !payload.length) return null;
+                            const item = payload[0]?.payload;
+                            if (!item) return null;
+                            return (
+                              <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
+                                <p className="mb-1.5 text-xs font-semibold text-foreground">
+                                  {item.fullName}
+                                </p>
+                                <div className="space-y-0.5 text-[11px]">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Cost:</span>
+                                    <span className="font-medium" style={{ color: CHART_COLORS.primary }}>
+                                      {formatCurrency(item.cost)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Cumulative:</span>
+                                    <span className="font-medium" style={{ color: CHART_COLORS.secondary }}>
+                                      {formatCurrency(item.cumulative)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Share:</span>
+                                    <span className="font-medium text-foreground">{item.percentage}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
                           }}
                         />
 
