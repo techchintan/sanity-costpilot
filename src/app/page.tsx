@@ -182,17 +182,13 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Control Panel */}
-          <div className="mb-6">
+          {/* Controls and Activity */}
+          <div className="mb-6 flex flex-col gap-4">
             <ControlPanel
               loading={loading}
               error={error}
               onFetch={fetchAndCalculate}
             />
-          </div>
-
-          {/* Activity Logs */}
-          <div className="mb-6">
             <LogsPanel logs={logs} onClear={clearLogs} />
           </div>
 
