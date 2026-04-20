@@ -15,7 +15,6 @@ import {
   DataTable,
   LogsPanel,
   ControlPanel,
-  ProjectCostChart,
 } from "@/components/dashboard";
 
 export default function Home() {
@@ -183,24 +182,17 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Project Cost Breakdown Chart */}
+          {/* Control Panel */}
           <div className="mb-6">
-            <ProjectCostChart
-              summaryRows={summaryRows}
-              invoiceCount={invoiceCount}
-              projectCount={projectCount}
-              totalCost={totalCost}
-              loading={loading && summaryRows.length === 0}
-            />
-          </div>
-
-          {/* Control Panel and Logs */}
-          <div className="mb-6 grid gap-6 lg:grid-cols-2">
             <ControlPanel
               loading={loading}
               error={error}
               onFetch={fetchAndCalculate}
             />
+          </div>
+
+          {/* Activity Logs */}
+          <div className="mb-6">
             <LogsPanel logs={logs} onClear={clearLogs} />
           </div>
 
