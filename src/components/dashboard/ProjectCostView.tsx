@@ -11,7 +11,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import {
   Search,
@@ -301,19 +300,7 @@ export function ProjectCostView({
                             return label;
                           }}
                         />
-                        <Legend 
-                          verticalAlign="top" 
-                          height={36}
-                          iconType="circle"
-                          formatter={(value) => {
-                            const labels: Record<string, string> = {
-                              cost: "Project Cost",
-                              cumulative: "Cumulative Total",
-                              average: "Average Line",
-                            };
-                            return <span style={{ color: "hsl(var(--foreground))", fontSize: 12 }}>{labels[value] || value}</span>;
-                          }}
-                        />
+
                         {/* Area for cumulative */}
                         <Area
                           yAxisId="right"
@@ -347,29 +334,31 @@ export function ProjectCostView({
                   </div>
                 </div>
 
-                {/* Legend Description */}
-                <div className="mt-5 rounded-lg border border-border bg-muted/40 p-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chart Legend</p>
-                  <div className="flex flex-wrap items-center justify-start gap-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded" style={{ backgroundColor: CHART_COLORS.primary }} />
-                      <span className="font-medium text-foreground">Project Cost</span>
-                      <span className="text-muted-foreground">(left axis)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded" style={{ backgroundColor: CHART_COLORS.secondary, opacity: 0.6 }} />
-                      <span className="font-medium text-foreground">Cumulative Total</span>
-                      <span className="text-muted-foreground">(right axis)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center">
-                        <div className="h-0.5 w-3 rounded" style={{ backgroundColor: CHART_COLORS.line }} />
-                        <div className="mx-0.5 h-0.5 w-1 rounded" style={{ backgroundColor: CHART_COLORS.line }} />
-                        <div className="h-0.5 w-3 rounded" style={{ backgroundColor: CHART_COLORS.line }} />
-                      </div>
-                      <span className="font-medium text-foreground">Average Cost</span>
-                      <span className="text-muted-foreground">(dashed line)</span>
-                    </div>
+                {/* Legend */}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-6 border-t border-border pt-4">
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className="inline-block h-3 w-3 rounded-sm" 
+                      style={{ backgroundColor: CHART_COLORS.primary }} 
+                    />
+                    <span className="text-sm text-muted-foreground">Project Cost</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className="inline-block h-3 w-3 rounded-sm" 
+                      style={{ backgroundColor: CHART_COLORS.secondary, opacity: 0.5 }} 
+                    />
+                    <span className="text-sm text-muted-foreground">Cumulative Total</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className="inline-block h-0.5 w-5 rounded-full" 
+                      style={{ 
+                        backgroundColor: CHART_COLORS.line,
+                        backgroundImage: `repeating-linear-gradient(90deg, ${CHART_COLORS.line} 0, ${CHART_COLORS.line} 3px, transparent 3px, transparent 6px)`
+                      }} 
+                    />
+                    <span className="text-sm text-muted-foreground">Average Cost</span>
                   </div>
                 </div>
               </div>
