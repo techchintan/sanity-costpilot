@@ -13,7 +13,6 @@ import {
   Sidebar,
   Header,
   MetricCard,
-  CostChart,
   DataTable,
   LogsPanel,
   ControlPanel,
@@ -48,31 +47,6 @@ export default function Home() {
     }
     return Array.from(keys).sort();
   }, [pivotRows]);
-
-  const chartData = useMemo(() => {
-    const monthTotals: Record<string, number> = {};
-    for (const row of summaryRows) {
-      const month = row.month;
-      const value = typeof row.total === 'number' && !isNaN(row.total) ? row.total : 0;
-      monthTotals[month] = (monthTotals[month] || 0) + value;
-    }
-    return Object.entries(monthTotals)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, value]) => ({ name, value: isNaN(value) ? 0 : value }));
-  }, [summaryRows]);
-
-  const topProjectsData = useMemo(() => {
-    const projectTotals: Record<string, number> = {};
-    for (const row of summaryRows) {
-      const name = row.projectName || row.projectId;
-      const value = typeof row.total === 'number' && !isNaN(row.total) ? row.total : 0;
-      projectTotals[name] = (projectTotals[name] || 0) + value;
-    }
-    return Object.entries(projectTotals)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 6)
-      .map(([name, value]) => ({ name: name.slice(0, 15), value: isNaN(value) ? 0 : value }));
-  }, [summaryRows]);
 
   const totalCost = useMemo(() => {
     if (!summaryRows || summaryRows.length === 0) return 0;
@@ -247,36 +221,14 @@ export default function Home() {
             />
           </div>
 
-          {/* Charts and Control Panel */}
-          <div className="mb-6 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <CostChart
-                data={chartData}
-                type="area"
-                title="Monthly Cost Trend"
-                description="Total costs aggregated by month across all projects"
-                loading={loading && chartData.length === 0}
-              />
-            </div>
-            <div className="space-y-6">
-              <ControlPanel
-                loading={loading}
-                error={error}
-                onFetch={fetchAndCalculate}
-              />
-              <LogsPanel logs={logs} onClear={clearLogs} />
-            </div>
-          </div>
-
-          {/* Top Projects Chart */}
-          <div className="mb-6">
-            <CostChart
-              data={topProjectsData}
-              type="bar"
-              title="Top Projects by Cost"
-              description="Highest cost projects across all billing periods"
-              loading={loading && topProjectsData.length === 0}
+          {/* Control Panel and Logs */}
+          <div className="mb-6 grid gap-6 lg:grid-cols-2">
+            <ControlPanel
+              loading={loading}
+              error={error}
+              onFetch={fetchAndCalculate}
             />
+            <LogsPanel logs={logs} onClear={clearLogs} />
           </div>
 
           {/* Data Table */}
