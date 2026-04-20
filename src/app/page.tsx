@@ -53,23 +53,25 @@ export default function Home() {
     const monthTotals: Record<string, number> = {};
     for (const row of summaryRows) {
       const month = row.month;
-      monthTotals[month] = (monthTotals[month] || 0) + row.total;
+      const value = typeof row.total === 'number' && !isNaN(row.total) ? row.total : 0;
+      monthTotals[month] = (monthTotals[month] || 0) + value;
     }
     return Object.entries(monthTotals)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, value]) => ({ name, value }));
+      .map(([name, value]) => ({ name, value: isNaN(value) ? 0 : value }));
   }, [summaryRows]);
 
   const topProjectsData = useMemo(() => {
     const projectTotals: Record<string, number> = {};
     for (const row of summaryRows) {
       const name = row.projectName || row.projectId;
-      projectTotals[name] = (projectTotals[name] || 0) + row.total;
+      const value = typeof row.total === 'number' && !isNaN(row.total) ? row.total : 0;
+      projectTotals[name] = (projectTotals[name] || 0) + value;
     }
     return Object.entries(projectTotals)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 6)
-      .map(([name, value]) => ({ name: name.slice(0, 15), value }));
+      .map(([name, value]) => ({ name: name.slice(0, 15), value: isNaN(value) ? 0 : value }));
   }, [summaryRows]);
 
   const totalCost = useMemo(() => {
