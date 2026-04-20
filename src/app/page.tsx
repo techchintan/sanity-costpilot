@@ -73,7 +73,12 @@ export default function Home() {
   }, [summaryRows]);
 
   const totalCost = useMemo(() => {
-    return summaryRows.reduce((acc, row) => acc + row.total, 0);
+    if (!summaryRows || summaryRows.length === 0) return 0;
+    const sum = summaryRows.reduce((acc, row) => {
+      const value = typeof row.total === 'number' && !isNaN(row.total) ? row.total : 0;
+      return acc + value;
+    }, 0);
+    return isNaN(sum) ? 0 : sum;
   }, [summaryRows]);
 
   const projectCount = useMemo(() => {
