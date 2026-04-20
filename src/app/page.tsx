@@ -12,7 +12,6 @@ import {
 import {
   Sidebar,
   Header,
-  CostBreakdown,
   DataTable,
   LogsPanel,
   ControlPanel,
@@ -181,18 +180,6 @@ export default function Home() {
             <p className="mt-1 text-sm text-muted-foreground">
               Monitor and analyze your Sanity project costs across all invoices
             </p>
-          </div>
-
-          {/* Cost Breakdown Section */}
-          <div className="mb-6">
-            <CostBreakdown
-              invoiceCount={invoiceCount}
-              totalCost={totalCost}
-              projectCount={projectCount}
-              detailRowsCount={detailRows.length}
-              summaryRows={summaryRows}
-              loading={loading}
-            />
           </div>
 
           {/* Control Panel and Logs */}
